@@ -31,7 +31,7 @@ where
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn deploy_contract(
-        &mut self,
+        &self,
         contract_bytes: Vec<u8>,
         value: BalanceOf<Config::Runtime>,
         data: Vec<u8>,
@@ -72,7 +72,7 @@ where
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn instantiate_contract(
-        &mut self,
+        &self,
         code_hash: Vec<u8>,
         value: BalanceOf<Config::Runtime>,
         data: Vec<u8>,
@@ -112,7 +112,7 @@ where
     /// * `origin` - The sender of the contract call.
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
     pub fn upload_contract(
-        &mut self,
+        &self,
         contract_bytes: Vec<u8>,
         origin: AccountIdFor<Config::Runtime>,
         storage_deposit_limit: Option<BalanceOf<Config::Runtime>>,
@@ -141,7 +141,7 @@ where
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
     #[allow(clippy::too_many_arguments)]
     pub fn call_contract(
-        &mut self,
+        &self,
         address: AccountIdFor<Config::Runtime>,
         value: BalanceOf<Config::Runtime>,
         data: Vec<u8>,
