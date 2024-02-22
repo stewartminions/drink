@@ -15,11 +15,6 @@ pub trait SandboxConfig {
     /// The runtime associated with the sandbox.
     type Runtime: frame_system::Config;
 
-    // /// Initialize the storage at the genesis block.
-    // fn initialize_storage(_storage: &mut Storage) -> Result<(), String> {
-    //     Ok(())
-    // }
-
     /// Execute the given externalities.
     fn execute_with<T>(execute: impl FnOnce() -> T) -> T;
 
