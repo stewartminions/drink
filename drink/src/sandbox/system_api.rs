@@ -8,17 +8,17 @@ use crate::{EventRecordOf, RuntimeCall, SandboxConfig};
 
 impl<Config: SandboxConfig> Sandbox<Config> {
     /// Return the current height of the chain.
-    pub fn block_number(&mut self) -> BlockNumberFor<Config::Runtime> {
+    pub fn block_number(&self) -> BlockNumberFor<Config::Runtime> {
         self.execute_with(frame_system::Pallet::<Config::Runtime>::block_number)
     }
 
     /// Return the events of the current block so far.
-    pub fn events(&mut self) -> Vec<EventRecordOf<Config::Runtime>> {
+    pub fn events(&self) -> Vec<EventRecordOf<Config::Runtime>> {
         self.execute_with(frame_system::Pallet::<Config::Runtime>::events)
     }
 
     /// Reset the events of the current block.
-    pub fn reset_events(&mut self) {
+    pub fn reset_events(&self) {
         self.execute_with(frame_system::Pallet::<Config::Runtime>::reset_events)
     }
 
@@ -31,7 +31,7 @@ impl<Config: SandboxConfig> Sandbox<Config> {
     pub fn runtime_call<
         Origin: Into<<RuntimeCall<Config::Runtime> as Dispatchable>::RuntimeOrigin>,
     >(
-        &mut self,
+        &self,
         call: RuntimeCall<Config::Runtime>,
         origin: Origin,
     ) -> DispatchResultWithInfo<<RuntimeCall<Config::Runtime> as Dispatchable>::PostInfo> {
@@ -49,7 +49,7 @@ mod tests {
     };
 
     fn make_transfer(
-        sandbox: &mut Sandbox<MinimalRuntime>,
+        sandbox: &Sandbox<MinimalRuntime>,
         dest: AccountId32,
         value: u128,
     ) -> DispatchResultWithInfo<<RuntimeCall<MinimalRuntime> as Dispatchable>::PostInfo> {
@@ -85,12 +85,12 @@ mod tests {
 
     #[test]
     fn runtime_call_works() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
 
         const RECIPIENT: AccountId32 = AccountId32::new([2u8; 32]);
         let initial_balance = sandbox.free_balance(&RECIPIENT);
 
-        let result = make_transfer(&mut sandbox, RECIPIENT, 100);
+        let result = make_transfer(&sandbox, RECIPIENT, 100);
         assert!(result.is_ok());
 
         let expected_balance = initial_balance + 100;
@@ -99,13 +99,13 @@ mod tests {
 
     #[test]
     fn current_events() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
         const RECIPIENT: AccountId32 = AccountId32::new([2u8; 32]);
 
         let events_before = sandbox.events();
         assert!(events_before.is_empty());
 
-        make_transfer(&mut sandbox, RECIPIENT, 1).expect("Failed to make transfer");
+        make_transfer(&sandbox, RECIPIENT, 1).expect("Failed to make transfer");
 
         let events_after = sandbox.events();
         assert!(!events_after.is_empty());
@@ -117,16 +117,16 @@ mod tests {
 
     #[test]
     fn resetting_events() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
         const RECIPIENT: AccountId32 = AccountId32::new([3u8; 32]);
 
-        make_transfer(&mut sandbox, RECIPIENT.clone(), 1).expect("Failed to make transfer");
+        make_transfer(&sandbox, RECIPIENT.clone(), 1).expect("Failed to make transfer");
 
         assert!(!sandbox.events().is_empty());
         sandbox.reset_events();
         assert!(sandbox.events().is_empty());
 
-        make_transfer(&mut sandbox, RECIPIENT, 1).expect("Failed to make transfer");
+        make_transfer(&sandbox, RECIPIENT, 1).expect("Failed to make transfer");
         assert!(!sandbox.events().is_empty());
     }
 }

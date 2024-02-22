@@ -67,12 +67,7 @@ pub fn execute(app_state: &mut AppState) -> Result<()> {
 }
 
 fn build_blocks(app_state: &mut AppState, count: u32) {
-    app_state.chain_info.block_height = app_state
-        .session
-        .sandbox()
-        .build_blocks(count)
-        .expect("Failed to build block - chain is broken");
-
+    app_state.chain_info.block_height = app_state.session.sandbox().build_blocks(count);
     app_state.print(&format!("{count} blocks built"));
 }
 

@@ -10,7 +10,7 @@ mod tests {
     #[test]
     fn we_can_make_a_token_transfer_call() {
         // We create a sandbox object, which represents a blockchain runtime.
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
 
         // Bob will be the recipient of the transfer.
         const BOB: AccountId32 = AccountId32::new([2u8; 32]);
@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn we_can_work_with_the_contracts_pallet_in_low_level() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
 
         // A few runtime calls are also available directly from the sandbox. This includes a part of
         // the contracts API.

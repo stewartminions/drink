@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn can_upload_code() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
         let wasm_binary = compile_module("dummy");
         let hash = <<MinimalRuntime as frame_system::Config>::Hashing>::hash(&wasm_binary);
 
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn can_deploy_contract() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
         let wasm_binary = compile_module("dummy");
 
         let events_before = sandbox.events();
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn can_call_contract() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::default();
+        let sandbox = Sandbox::<MinimalRuntime>::default();
         let actor = MinimalRuntime::default_actor();
         let wasm_binary = compile_module("dummy");
 
