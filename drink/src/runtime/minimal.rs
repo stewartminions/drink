@@ -3,12 +3,15 @@
 use std::time::SystemTime;
 
 use frame_support::{sp_runtime::traits::Header, traits::Hooks};
+
+/// A helper struct for initializing and finalizing blocks.
 pub struct BlockBuilder<T>(std::marker::PhantomData<T>);
 
 impl<
         T: pallet_balances::Config + pallet_timestamp::Config<Moment = u64> + pallet_contracts::Config,
     > BlockBuilder<T>
 {
+    /// Initialize a new block at particular height.
     pub fn initialize_block(
         height: frame_system::pallet_prelude::BlockNumberFor<T>,
         parent_hash: <T as frame_system::Config>::Hash,
@@ -27,6 +30,7 @@ impl<
         frame_system::Pallet::<T>::note_finished_initialize();
     }
 
+    /// Finalize a block at particular height.
     pub fn finalize_block(
         height: frame_system::pallet_prelude::BlockNumberFor<T>,
     ) -> Result<<T as frame_system::Config>::Hash, String> {
@@ -40,6 +44,7 @@ impl<
 /// The macro will generate an implementation of `drink::SandboxConfig` for the given runtime type.
 #[macro_export]
 macro_rules! impl_sandbox_config {
+	// entry point: generate ext
     ($name:ident, $runtime:tt, $default_balance:expr, $default_actor:expr) => {
         $crate::paste::paste! {
             $crate::impl_sandbox_config!([<EXT_ $name:upper>], $name, $runtime, $default_balance, $default_actor);
@@ -60,10 +65,7 @@ macro_rules! impl_sandbox_config {
                 .unwrap();
 
                 let mut ext = $crate::TestExternalities::new(storage);
-                ext.execute_with(|| {
-                    <$name as $crate::SandboxConfig>::initialize_block(1, Default::default())
-                });
-
+                ext.execute_with(|| <$name as $crate::SandboxConfig>::initialize_block(1, Default::default()));
                 ext
             });
         }
