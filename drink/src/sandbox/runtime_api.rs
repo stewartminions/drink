@@ -7,38 +7,6 @@ use super::Sandbox;
 use crate::{DrinkResult, Error};
 
 impl<Config: crate::SandboxConfig> Sandbox<Config> {
-    // Creates a new sandbox.
-    //
-    // Returns an error if the storage could not be initialized.
-    //
-    // The storage is initialized with a genesis block with a single account `R::default_actor()` with
-    // `INITIAL_BALANCE`.
-    // pub fn new() -> DrinkResult<Self> {
-    // // let mut storage = GenesisConfig::<Config::Runtime>::default()
-    // //     .build_storage()
-    // //     .map_err(Error::StorageBuilding)?;
-    // //
-    // // Config::initialize_storage(&mut storage).map_err(Error::StorageBuilding)?;
-    //
-    // let mut sandbox = Self {
-    //     externalities: TestExternalities::new(storage),
-    //     _phantom: Default::default(),
-    // };
-    //
-    // sandbox
-    //     // We start the chain from the 1st block, so that events are collected (they are not
-    //     // recorded for the genesis block...).
-    //     .execute_with(|| {
-    //         Config::initialize_block(
-    //             BlockNumberFor::<Config::Runtime>::one(),
-    //             Default::default(),
-    //         )
-    //     })
-    //     .map_err(Error::BlockInitialize)?;
-
-    // Ok(sandbox)
-    // }
-
     /// Build a new empty block and return the new height.
     pub fn build_block(&mut self) -> DrinkResult<BlockNumberFor<Config::Runtime>> {
         self.execute_with(|| {
