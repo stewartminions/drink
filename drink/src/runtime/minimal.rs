@@ -33,11 +33,11 @@ impl<
     /// Finalize a block at particular height.
     pub fn finalize_block(
         height: frame_system::pallet_prelude::BlockNumberFor<T>,
-    ) -> Result<<T as frame_system::Config>::Hash, String> {
+    ) -> <T as frame_system::Config>::Hash {
         pallet_contracts::Pallet::<T>::on_finalize(height);
         pallet_timestamp::Pallet::<T>::on_finalize(height);
         pallet_balances::Pallet::<T>::on_finalize(height);
-        Ok(frame_system::Pallet::<T>::finalize().hash())
+        frame_system::Pallet::<T>::finalize().hash()
     }
 }
 
@@ -108,7 +108,7 @@ macro_rules! impl_sandbox_config {
 
             fn finalize_block(
                 height: $crate::frame_system::pallet_prelude::BlockNumberFor<$runtime>,
-            ) -> Result<<$runtime as $crate::frame_system::Config>::Hash, String> {
+            ) -> <$runtime as $crate::frame_system::Config>::Hash {
                 $crate::minimal::BlockBuilder::<$runtime>::finalize_block(height)
             }
 

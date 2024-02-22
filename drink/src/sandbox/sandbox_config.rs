@@ -34,8 +34,8 @@ pub trait SandboxConfig {
     /// Finalize a block at particular height.
     fn finalize_block(
         _height: BlockNumberFor<Self::Runtime>,
-    ) -> Result<<Self::Runtime as frame_system::Config>::Hash, String> {
-        Ok(Default::default())
+    ) -> <Self::Runtime as frame_system::Config>::Hash {
+        Default::default()
     }
 
     /// Default actor for the sandbox.
