@@ -71,13 +71,13 @@ mod tests {
 
     #[test]
     fn dry_run_works() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().expect("Failed to create sandbox");
+        let sandbox = Sandbox::<MinimalRuntime>::default();
         let actor = MinimalRuntime::default_actor();
         let initial_balance = sandbox.free_balance(&actor);
 
-        sandbox.dry_run(|runtime| {
-            runtime.mint_into(actor.clone(), 100).unwrap();
-            assert_eq!(runtime.free_balance(&actor), initial_balance + 100);
+        sandbox.dry_run(|| {
+            sandbox.mint_into(&actor, 100).unwrap();
+            assert_eq!(sandbox.free_balance(&actor), initial_balance + 100);
         });
 
         assert_eq!(sandbox.free_balance(&actor), initial_balance);
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn runtime_call_works() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().expect("Failed to create sandbox");
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
 
         const RECIPIENT: AccountId32 = AccountId32::new([2u8; 32]);
         let initial_balance = sandbox.free_balance(&RECIPIENT);
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn current_events() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().expect("Failed to create sandbox");
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
         const RECIPIENT: AccountId32 = AccountId32::new([2u8; 32]);
 
         let events_before = sandbox.events();
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn resetting_events() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().expect("Failed to create sandbox");
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
         const RECIPIENT: AccountId32 = AccountId32::new([3u8; 32]);
 
         make_transfer(&mut sandbox, RECIPIENT.clone(), 1).expect("Failed to make transfer");

@@ -1,65 +1,113 @@
 #![allow(missing_docs)] // `construct_macro` doesn't allow doc comments for the runtime type.
 
+use std::time::SystemTime;
+
+use frame_support::{sp_runtime::traits::Header, traits::Hooks};
+pub struct BlockBuilder<T>(std::marker::PhantomData<T>);
+
+impl<
+        T: pallet_balances::Config + pallet_timestamp::Config<Moment = u64> + pallet_contracts::Config,
+    > BlockBuilder<T>
+{
+    pub fn initialize_block(
+        height: frame_system::pallet_prelude::BlockNumberFor<T>,
+        parent_hash: <T as frame_system::Config>::Hash,
+    ) {
+        frame_system::Pallet::<T>::reset_events();
+        frame_system::Pallet::<T>::initialize(&height, &parent_hash, &Default::default());
+        pallet_balances::Pallet::<T>::on_initialize(height);
+        pallet_timestamp::Pallet::<T>::set_timestamp(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_secs(),
+        );
+        pallet_timestamp::Pallet::<T>::on_initialize(height);
+        pallet_contracts::Pallet::<T>::on_initialize(height);
+        frame_system::Pallet::<T>::note_finished_initialize();
+    }
+
+    pub fn finalize_block(
+        height: frame_system::pallet_prelude::BlockNumberFor<T>,
+    ) -> Result<<T as frame_system::Config>::Hash, String> {
+        pallet_contracts::Pallet::<T>::on_finalize(height);
+        pallet_timestamp::Pallet::<T>::on_finalize(height);
+        pallet_balances::Pallet::<T>::on_finalize(height);
+        Ok(frame_system::Pallet::<T>::finalize().hash())
+    }
+}
+
 /// The macro will generate an implementation of `drink::SandboxConfig` for the given runtime type.
 #[macro_export]
 macro_rules! impl_sandbox_config {
-    (
-        $( #[ $attr:meta ] )*
-        $vis:vis struct $name:ident {
-            runtime: $runtime:tt;
-            default_balance: $default_balance:expr;
-            default_actor: $default_actor:expr;
+    ($name:ident, $runtime:tt, $default_balance:expr, $default_actor:expr) => {
+        $crate::paste::paste! {
+            $crate::impl_sandbox_config!([<EXT_ $name:upper>], $name, $runtime, $default_balance, $default_actor);
         }
-    ) => {
-        $( #[ $attr ] )*
-        $vis struct $name;
-        impl_sandbox_config!($name, $runtime, $default_balance, $default_actor);
     };
-    (
-        $name:ident, $runtime:tt, $default_balance:expr, $default_actor:expr
-    ) => {
+
+    ($ext:ident, $name:ident, $runtime:tt, $default_balance:expr, $default_actor:expr) => {
+        thread_local! {
+            static $ext: ::std::cell::RefCell<$crate::TestExternalities> = ::std::cell::RefCell::new({
+                use $crate::frame_support::sp_runtime::BuildStorage;
+                let mut storage = $crate::frame_system::GenesisConfig::<$runtime>::default()
+                    .build_storage().unwrap();
+
+                $crate::pallet_balances::GenesisConfig::<$runtime> {
+                    balances: vec![($default_actor, $default_balance)],
+                }
+                .assimilate_storage(&mut storage)
+                .unwrap();
+
+                let mut ext = $crate::TestExternalities::new(storage);
+                ext.execute_with(|| {
+                    <$name as $crate::SandboxConfig>::initialize_block(1, Default::default())
+                });
+
+                ext
+            });
+        }
+
         impl $crate::SandboxConfig for $name {
             type Runtime = $runtime;
 
-            fn initialize_storage(storage: &mut $crate::frame_support::sp_runtime::Storage) -> Result<(), String> {
-                use $crate::frame_support::sp_runtime::BuildStorage;
-                $crate::pallet_balances::GenesisConfig::<$runtime> {
-                    balances: vec![(Self::default_actor(), $default_balance)],
-                }
-                .assimilate_storage(storage)
+            fn execute_with<T>(execute: impl FnOnce() -> T) -> T {
+                $ext.with(|v| v.borrow_mut().execute_with(execute))
+            }
+
+            fn dry_run<T>(action: impl FnOnce() -> T) -> T {
+                $ext.with(|v| {
+                    // Make a backup of the backend.
+                    let backend_backup = v.borrow_mut().as_backend();
+
+                    // Run the action, potentially modifying storage. Ensure, that there are no pending changes
+                    // that would affect the reverted backend.
+                    let result = action();
+
+                    let mut v = v.borrow_mut();
+                    v.commit_all().expect("Failed to commit changes");
+
+                    // Restore the backend.
+                    v.backend = backend_backup;
+                    result
+                })
+            }
+
+            fn register_extension<E: ::core::any::Any + $crate::Extension>(ext: E) {
+                $ext.with(|v| v.borrow_mut().register_extension(ext));
             }
 
             fn initialize_block(
                 height: $crate::frame_system::pallet_prelude::BlockNumberFor<$runtime>,
                 parent_hash: <$runtime as $crate::frame_system::Config>::Hash,
-            ) -> Result<(), String> {
-                use std::time::SystemTime;
-                use $crate::frame_support::traits::Hooks;
-
-                $crate::frame_system::Pallet::<$runtime>::reset_events();
-                $crate::frame_system::Pallet::<$runtime>::initialize(&height, &parent_hash, &Default::default());
-                $crate::pallet_balances::Pallet::<$runtime>::on_initialize(height);
-                $crate::pallet_timestamp::Pallet::<$runtime>::set_timestamp(
-                    SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .expect("Time went backwards")
-                        .as_secs(),
-                );
-                $crate::pallet_timestamp::Pallet::<$runtime>::on_initialize(height);
-                $crate::pallet_contracts::Pallet::<$runtime>::on_initialize(height);
-                $crate::frame_system::Pallet::<$runtime>::note_finished_initialize();
-                Ok(())
+            ) {
+                $crate::minimal::BlockBuilder::<$runtime>::initialize_block(height, parent_hash)
             }
 
             fn finalize_block(
                 height: $crate::frame_system::pallet_prelude::BlockNumberFor<$runtime>,
             ) -> Result<<$runtime as $crate::frame_system::Config>::Hash, String> {
-                use $crate::frame_support::traits::Hooks;
-
-                $crate::pallet_contracts::Pallet::<$runtime>::on_finalize(height);
-                $crate::pallet_timestamp::Pallet::<$runtime>::on_finalize(height);
-                $crate::pallet_balances::Pallet::<$runtime>::on_finalize(height);
-                Ok($crate::frame_system::Pallet::<$runtime>::finalize().hash())
+                $crate::minimal::BlockBuilder::<$runtime>::finalize_block(height)
             }
 
             fn default_actor() -> $crate::runtime::AccountIdFor<$runtime> {
@@ -211,6 +259,8 @@ mod construct_runtime {
 
     /// Default initial balance for the default account.
     pub const INITIAL_BALANCE: u128 = 1_000_000_000_000_000;
+
+    // implement the `drink::SandboxConfig` for the runtime type
     $crate::impl_sandbox_config!($name, $name, INITIAL_BALANCE, AccountId32::new([1u8; 32]));
 }
 

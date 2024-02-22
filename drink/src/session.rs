@@ -153,7 +153,7 @@ where
     /// Creates a new `Session`.
     pub fn new() -> Result<Self, SessionError> {
         let mocks = Arc::new(Mutex::new(MockRegistry::new()));
-        let mut sandbox = Sandbox::new().map_err(SessionError::Drink)?;
+        let sandbox = Sandbox::<Config>::default();
         sandbox.register_extension(InterceptingExt(Box::new(MockingExtension {
             mock_registry: Arc::clone(&mocks),
         })));
@@ -500,5 +500,14 @@ where
     /// Set the tracing extension
     pub fn set_tracing_extension(&mut self, d: TracingExt) {
         self.sandbox.register_extension(d);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn minimal_runtime_session_should_work() {
+        let _ = Session::<MinimalRuntime>::new().expect("Failed to create a session");
     }
 }

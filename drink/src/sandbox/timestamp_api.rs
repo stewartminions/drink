@@ -10,7 +10,7 @@ where
     Config::Runtime: pallet_timestamp::Config,
 {
     /// Return the timestamp of the current block.
-    pub fn get_timestamp(&mut self) -> MomentOf<Config::Runtime> {
+    pub fn get_timestamp(&self) -> MomentOf<Config::Runtime> {
         self.execute_with(pallet_timestamp::Pallet::<Config::Runtime>::get)
     }
 
@@ -19,7 +19,7 @@ where
     /// # Arguments
     ///
     /// * `timestamp` - The new timestamp to be set.
-    pub fn set_timestamp(&mut self, timestamp: MomentOf<Config::Runtime>) {
+    pub fn set_timestamp(&self, timestamp: MomentOf<Config::Runtime>) {
         self.execute_with(|| pallet_timestamp::Pallet::<Config::Runtime>::set_timestamp(timestamp))
     }
 }
@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn getting_and_setting_timestamp_works() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().expect("Failed to create sandbox");
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
         for timestamp in 0..10 {
             assert_ne!(sandbox.get_timestamp(), timestamp);
             sandbox.set_timestamp(timestamp);

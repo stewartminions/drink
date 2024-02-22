@@ -44,7 +44,7 @@ where
         BalanceOf<Config::Runtime>,
         EventRecordOf<Config::Runtime>,
     > {
-        self.externalities.execute_with(|| {
+        self.execute_with(|| {
             pallet_contracts::Pallet::<Config::Runtime>::bare_instantiate(
                 origin,
                 value,
@@ -86,7 +86,7 @@ where
         EventRecordOf<Config::Runtime>,
     > {
         let mut code_hash = &code_hash[..];
-        self.externalities.execute_with(|| {
+        self.execute_with(|| {
             pallet_contracts::Pallet::<Config::Runtime>::bare_instantiate(
                 origin,
                 value,
@@ -119,7 +119,7 @@ where
         determinism: Determinism,
     ) -> CodeUploadResult<<Config::Runtime as frame_system::Config>::Hash, BalanceOf<Config::Runtime>>
     {
-        self.externalities.execute_with(|| {
+        self.execute_with(|| {
             pallet_contracts::Pallet::<Config::Runtime>::bare_upload_code(
                 origin,
                 contract_bytes,
@@ -150,7 +150,7 @@ where
         storage_deposit_limit: Option<BalanceOf<Config::Runtime>>,
         determinism: Determinism,
     ) -> ContractExecResult<BalanceOf<Config::Runtime>, EventRecordOf<Config::Runtime>> {
-        self.externalities.execute_with(|| {
+        self.execute_with(|| {
             pallet_contracts::Pallet::<Config::Runtime>::bare_call(
                 origin,
                 address,
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn can_upload_code() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().unwrap();
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
         let wasm_binary = compile_module("dummy");
         let hash = <<MinimalRuntime as frame_system::Config>::Hashing>::hash(&wasm_binary);
 
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn can_deploy_contract() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().unwrap();
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
         let wasm_binary = compile_module("dummy");
 
         let events_before = sandbox.events();
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn can_call_contract() {
-        let mut sandbox = Sandbox::<MinimalRuntime>::new().unwrap();
+        let mut sandbox = Sandbox::<MinimalRuntime>::default();
         let actor = MinimalRuntime::default_actor();
         let wasm_binary = compile_module("dummy");
 

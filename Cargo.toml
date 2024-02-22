@@ -21,6 +21,7 @@ repository = "https://github.com/Cardinal-Cryptography/drink"
 version = "0.10.0"
 
 [workspace.dependencies]
+paste = { version = "1.0.7" }
 anyhow = { version = "1.0.71" }
 cargo_metadata = { version = "0.18.1" }
 clap = { version = "4.3.4" }
