@@ -15,8 +15,9 @@ cargo test --release
 While in most examples and showcases for `drink` you will see `drink::Session`, here we are using `drink::Sandbox`.
 `Session` is very useful when you are working with contracts, but if you are focusing only on the runtime interaction, `Sandbox` is enough.
 You can always switch from `Session` to `Sandbox` with:
+
 ```rust
-    let session = Session::<Runtime>::new();
+    let session = Session::<Runtime>::default();
     ...
     let sandbox = session.sandbox(); // `sandbox` has type `&mut Sandbox<Runtime>`
 ```

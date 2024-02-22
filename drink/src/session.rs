@@ -76,7 +76,7 @@ pub const NO_ENDOWMENT: Option<BalanceOf<MinimalRuntime>> = None;
 ///
 /// # fn main() -> Result<(), drink::session::error::SessionError> {
 ///
-/// Session::<MinimalRuntime>::new()?
+/// Session::<MinimalRuntime>::default()
 ///     .deploy_and(contract_bytes(), "new", NO_ARGS, NO_SALT, NO_ENDOWMENT, &get_transcoder())?
 ///     .call_and("foo", NO_ARGS, NO_ENDOWMENT)?
 ///     .with_actor(bob())
@@ -102,7 +102,7 @@ pub const NO_ENDOWMENT: Option<BalanceOf<MinimalRuntime>> = None;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///
-/// let mut session = Session::<MinimalRuntime>::new()?;
+/// let mut session = Session::<MinimalRuntime>::default();
 /// let _address = session.deploy(contract_bytes(), "new", NO_ARGS, NO_SALT, NO_ENDOWMENT, &get_transcoder())?;
 /// let _result: u32 = session.call("foo", NO_ARGS, NO_ENDOWMENT)??;
 /// session.set_actor(bob());
@@ -122,12 +122,12 @@ pub const NO_ENDOWMENT: Option<BalanceOf<MinimalRuntime>> = None;
 ///
 /// # fn main() -> Result<(), drink::session::error::SessionError> {
 /// // Simplest way, loading a bundle from the project's directory:
-/// Session::<MinimalRuntime>::new()?
+/// Session::<MinimalRuntime>::default()
 ///     .deploy_bundle_and(local_contract_file!(), "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)?; /* ... */
 ///
 /// // Or choosing the file explicitly:
 /// let contract = ContractBundle::load("path/to/your.contract")?;
-/// Session::<MinimalRuntime>::new()?
+/// Session::<MinimalRuntime>::default()
 ///     .deploy_bundle_and(contract, "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)?; /* ... */
 ///  # Ok(()) }
 /// ```
@@ -146,19 +146,18 @@ where
     mocks: Arc<Mutex<MockRegistry<AccountIdFor<Config::Runtime>>>>,
 }
 
-impl<Config: SandboxConfig> Session<Config>
+impl<Config: SandboxConfig> Default for Session<Config>
 where
     Config::Runtime: pallet_contracts::Config,
 {
-    /// Creates a new `Session`.
-    pub fn new() -> Result<Self, SessionError> {
+    fn default() -> Self {
         let mocks = Arc::new(Mutex::new(MockRegistry::new()));
         let sandbox = Sandbox::<Config>::default();
         sandbox.register_extension(InterceptingExt(Box::new(MockingExtension {
             mock_registry: Arc::clone(&mocks),
         })));
 
-        Ok(Self {
+        Self {
             sandbox,
             mocks,
             actor: Config::default_actor(),
@@ -166,9 +165,14 @@ where
             determinism: Determinism::Enforced,
             transcoders: TranscoderRegistry::new(),
             record: Default::default(),
-        })
+        }
     }
+}
 
+impl<Config: SandboxConfig> Session<Config>
+where
+    Config::Runtime: pallet_contracts::Config,
+{
     /// Sets a new actor and returns updated `self`.
     pub fn with_actor(self, actor: AccountIdFor<Config::Runtime>) -> Self {
         Self { actor, ..self }
@@ -500,14 +504,5 @@ where
     /// Set the tracing extension
     pub fn set_tracing_extension(&mut self, d: TracingExt) {
         self.sandbox.register_extension(d);
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn minimal_runtime_session_should_work() {
-        let _ = Session::<MinimalRuntime>::new().expect("Failed to create a session");
     }
 }

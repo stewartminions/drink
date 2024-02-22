@@ -93,7 +93,7 @@ fn test_internal(attr: TokenStream2, item: TokenStream2) -> SynResult<TokenStrea
         #[test]
         #(#fn_attrs)*
         #fn_vis #fn_async #fn_const #fn_unsafety fn #fn_name #fn_generics () #fn_output {
-            let mut session = Session::<#config>::new().expect("Failed to create a session");
+            let mut session = Session::<#config>::default();
             #fn_block
         }
     })
@@ -131,7 +131,7 @@ fn test_internal(attr: TokenStream2, item: TokenStream2) -> SynResult<TokenStrea
 /// enum BundleProvider {}
 ///
 /// fn testcase() {
-///     Session::<MinimalRuntime>::new()?
+///     Session::<MinimalRuntime>::default()
 ///         .deploy_bundle_and(BundleProvider::local()?, "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)
 ///         .deploy_bundle_and(BundleProvider::AnotherContract.bundle()?, "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)
 ///         .unwrap();
