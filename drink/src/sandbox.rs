@@ -24,7 +24,7 @@ use sp_externalities::Extension;
 /// The type of an account identifier.
 pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
 
-/// A runtime to use.
+/// Sandbox defines the API of a sandboxed runtime.
 pub trait Sandbox {
     /// The runtime associated with the sandbox.
     type Runtime: frame_system::Config;
