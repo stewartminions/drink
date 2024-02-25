@@ -1,66 +1,65 @@
-//! A sandboxed runtime.
+//! Module containing the core trait use to customize the sandboxed runtime.
 
-mod sandbox_config;
-pub use sandbox_config::SandboxConfig;
+use core::any::Any;
+
 pub mod balance_api;
 pub mod contracts_api;
 pub mod runtime_api;
 pub mod system_api;
 pub mod timestamp_api;
 
-use std::any::Any;
-
-use sp_externalities::Extension;
-
-/// A sandboxed runtime.
-#[derive(frame_support::DefaultNoBound)]
-pub struct Sandbox<Config>(std::marker::PhantomData<Config>);
-
-impl<Config: SandboxConfig> Sandbox<Config> {
-    /// Execute the given closure with the inner externallities.
-    ///
-    /// Returns the result of the given closure.
-    pub fn execute_with<T>(&self, execute: impl FnOnce() -> T) -> T {
-        Config::execute_with(execute)
-    }
-
-    /// Run an action without modifying the storage.
-    ///
-    /// # Arguments
-    ///
-    /// * `action` - The action to run.
-    pub fn dry_run<T>(&self, action: impl FnOnce() -> T) -> T {
-        Config::dry_run(action)
-    }
-
-    /// Registers an extension.
-    pub fn register_extension<E: Any + Extension>(&self, ext: E) {
-        Config::register_extension(ext);
-    }
+/// The prelude of the sandbox module.
+pub mod prelude {
+    pub use super::{
+        balance_api::BalanceAPI, contracts_api::ContractAPI, runtime_api::RuntimeAPI,
+        system_api::SystemAPI, timestamp_api::TimestampAPI, Sandbox,
+    };
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::MinimalRuntime;
-    #[test]
-    fn dry_run_works() {
-        let sandbox = Sandbox::<MinimalRuntime>::default();
-        let balance = sandbox.free_balance(&MinimalRuntime::default_actor());
+use frame_metadata::RuntimeMetadataPrefixed;
+use frame_support::sp_runtime::traits::Dispatchable;
+use frame_system::pallet_prelude::BlockNumberFor;
+use sp_externalities::Extension;
 
-        let dry_run_balance = sandbox.dry_run(|| {
-            sandbox
-                .mint_into(&MinimalRuntime::default_actor(), 100)
-                .unwrap();
+/// The type of an account identifier.
+pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
 
-            sandbox.free_balance(&MinimalRuntime::default_actor())
-        });
+/// A runtime to use.
+pub trait Sandbox {
+    /// The runtime associated with the sandbox.
+    type Runtime: frame_system::Config;
 
-        assert_eq!(balance + 100, dry_run_balance);
+    /// Execute the given externalities.
+    fn execute_with<T>(&mut self, execute: impl FnOnce() -> T) -> T;
 
-        assert_eq!(
-            sandbox.free_balance(&MinimalRuntime::default_actor()),
-            balance
-        );
+    /// Dry run an action without modifying the storage.
+    fn dry_run<T>(&mut self, action: impl FnOnce(&mut Self) -> T) -> T;
+
+    /// Register an extension.
+    fn register_extension<E: Any + Extension>(&mut self, ext: E);
+
+    /// Initialize a new block at particular height.
+    fn initialize_block(
+        _height: BlockNumberFor<Self::Runtime>,
+        _parent_hash: <Self::Runtime as frame_system::Config>::Hash,
+    ) {
     }
+
+    /// Finalize a block at particular height.
+    fn finalize_block(
+        _height: BlockNumberFor<Self::Runtime>,
+    ) -> <Self::Runtime as frame_system::Config>::Hash {
+        Default::default()
+    }
+
+    /// Default actor for the sandbox.
+    fn default_actor() -> AccountIdFor<Self::Runtime>;
+
+    /// Metadata of the runtime.
+    fn get_metadata() -> RuntimeMetadataPrefixed;
+
+    /// Convert an account to an call origin.
+    fn convert_account_to_origin(
+        account: AccountIdFor<Self::Runtime>,
+    ) -> <<Self::Runtime as frame_system::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin;
 }

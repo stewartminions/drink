@@ -6,7 +6,7 @@ When you are working with a `Session` object, you can consult its `Record` - a d
 For example:
 
 ```rust
-let mut session = Session::<MinimalRuntime>::default();
+let mut session = Session::<MinimalSandbox>::default();
 // .. some contract interaction
 
 // `record` is a `Record` object that contains all the results and events that have been produced while interacting with contracts.

@@ -2,7 +2,15 @@
 
 use std::time::SystemTime;
 
-use frame_support::{sp_runtime::traits::Header, traits::Hooks};
+use frame_support::{
+    sp_runtime::{
+        traits::{Header, One},
+        BuildStorage,
+    },
+    traits::Hooks,
+};
+use frame_system::pallet_prelude::BlockNumberFor;
+use sp_io::TestExternalities;
 
 /// A helper struct for initializing and finalizing blocks.
 pub struct BlockBuilder<T>(std::marker::PhantomData<T>);
@@ -11,6 +19,22 @@ impl<
         T: pallet_balances::Config + pallet_timestamp::Config<Moment = u64> + pallet_contracts::Config,
     > BlockBuilder<T>
 {
+    /// Create a new externalities with the given balances.
+    pub fn new_ext(balances: Vec<(T::AccountId, T::Balance)>) -> TestExternalities {
+        let mut storage = frame_system::GenesisConfig::<T>::default()
+            .build_storage()
+            .unwrap();
+
+        pallet_balances::GenesisConfig::<T> { balances }
+            .assimilate_storage(&mut storage)
+            .unwrap();
+
+        let mut ext = TestExternalities::new(storage);
+
+        ext.execute_with(|| Self::initialize_block(BlockNumberFor::<T>::one(), Default::default()));
+        ext
+    }
+
     /// Initialize a new block at particular height.
     pub fn initialize_block(
         height: frame_system::pallet_prelude::BlockNumberFor<T>,
@@ -41,104 +65,24 @@ impl<
     }
 }
 
-/// The macro will generate an implementation of `drink::SandboxConfig` for the given runtime type.
-#[macro_export]
-macro_rules! impl_sandbox_config {
-	// entry point: generate ext
-    ($name:ident, $runtime:tt, $default_balance:expr, $default_actor:expr) => {
-        $crate::paste::paste! {
-            $crate::impl_sandbox_config!([<EXT_ $name:upper>], $name, $runtime, $default_balance, $default_actor);
-        }
-    };
-
-    ($ext:ident, $name:ident, $runtime:tt, $default_balance:expr, $default_actor:expr) => {
-        thread_local! {
-            static $ext: ::std::cell::RefCell<$crate::TestExternalities> = ::std::cell::RefCell::new({
-                use $crate::frame_support::sp_runtime::BuildStorage;
-                let mut storage = $crate::frame_system::GenesisConfig::<$runtime>::default()
-                    .build_storage().unwrap();
-
-                $crate::pallet_balances::GenesisConfig::<$runtime> {
-                    balances: vec![($default_actor, $default_balance)],
-                }
-                .assimilate_storage(&mut storage)
-                .unwrap();
-
-                let mut ext = $crate::TestExternalities::new(storage);
-                ext.execute_with(|| <$name as $crate::SandboxConfig>::initialize_block(1, Default::default()));
-                ext
-            });
-        }
-
-        impl $crate::SandboxConfig for $name {
-            type Runtime = $runtime;
-
-            fn execute_with<T>(execute: impl FnOnce() -> T) -> T {
-                $ext.with(|v| v.borrow_mut().execute_with(execute))
-            }
-
-            fn dry_run<T>(action: impl FnOnce() -> T) -> T {
-                $ext.with(|v| {
-                    // Make a backup of the backend.
-                    let backend_backup = v.borrow_mut().as_backend();
-
-                    // Run the action, potentially modifying storage. Ensure, that there are no pending changes
-                    // that would affect the reverted backend.
-                    let result = action();
-
-                    let mut v = v.borrow_mut();
-                    v.commit_all().expect("Failed to commit changes");
-
-                    // Restore the backend.
-                    v.backend = backend_backup;
-                    result
-                })
-            }
-
-            fn register_extension<E: ::core::any::Any + $crate::Extension>(ext: E) {
-                $ext.with(|v| v.borrow_mut().register_extension(ext));
-            }
-
-            fn initialize_block(
-                height: $crate::frame_system::pallet_prelude::BlockNumberFor<$runtime>,
-                parent_hash: <$runtime as $crate::frame_system::Config>::Hash,
-            ) {
-                $crate::minimal::BlockBuilder::<$runtime>::initialize_block(height, parent_hash)
-            }
-
-            fn finalize_block(
-                height: $crate::frame_system::pallet_prelude::BlockNumberFor<$runtime>,
-            ) -> <$runtime as $crate::frame_system::Config>::Hash {
-                $crate::minimal::BlockBuilder::<$runtime>::finalize_block(height)
-            }
-
-            fn default_actor() -> $crate::runtime::AccountIdFor<$runtime> {
-                $default_actor
-            }
-
-            fn get_metadata() -> $crate::runtime::RuntimeMetadataPrefixed {
-                $runtime::metadata()
-            }
-
-            fn convert_account_to_origin(
-                account: $crate::runtime::AccountIdFor<$runtime>,
-            ) -> <<$runtime as $crate::frame_system::Config>::RuntimeCall as $crate::frame_support::sp_runtime::traits::Dispatchable>::RuntimeOrigin {
-                Some(account).into()
-            }
-        }
-    };
-}
-
 /// Macro creating a minimal runtime with the given name. Optionally can take a chain extension
 /// type as a second argument.
 ///
 /// The new macro will automatically implement `drink::SandboxConfig`.
 #[macro_export]
-macro_rules! create_minimal_runtime {
+macro_rules! create_minimal_sandbox {
     ($name:ident) => {
-        create_minimal_runtime!($name, ());
+        $crate::paste::paste! {
+            $crate::create_minimal_sandbox!($name, [<$name Runtime>], ());
+        }
     };
     ($name:ident, $chain_extension: ty) => {
+        $crate::paste::paste! {
+            $crate::create_minimal_sandbox!($name, [<$name Runtime>], $chain_extension);
+        }
+    };
+    ($sandbox:ident, $runtime:ident, $chain_extension: ty) => {
+
 
 // ------------ Put all the boilerplate into an auxiliary module -----------------------------------
 mod construct_runtime {
@@ -160,7 +104,7 @@ mod construct_runtime {
 
     // ------------ Define the runtime type as a collection of pallets -----------------------------
     construct_runtime!(
-        pub enum $name {
+        pub enum $runtime {
             System: $crate::frame_system,
             Balances: $crate::pallet_balances,
             Timestamp: $crate::pallet_timestamp,
@@ -170,15 +114,15 @@ mod construct_runtime {
 
     // ------------ Configure pallet system --------------------------------------------------------
     #[derive_impl($crate::frame_system::config_preludes::SolochainDefaultConfig as $crate::frame_system::DefaultConfig)]
-    impl $crate::frame_system::Config for $name {
-        type Block = $crate::frame_system::mocking::MockBlockU32<$name>;
+    impl $crate::frame_system::Config for $runtime {
+        type Block = $crate::frame_system::mocking::MockBlockU32<$runtime>;
         type Version = ();
         type BlockHashCount = ConstU32<250>;
-        type AccountData = $crate::pallet_balances::AccountData<<$name as $crate::pallet_balances::Config>::Balance>;
+        type AccountData = $crate::pallet_balances::AccountData<<$runtime as $crate::pallet_balances::Config>::Balance>;
     }
 
     // ------------ Configure pallet balances ------------------------------------------------------
-    impl $crate::pallet_balances::Config for $name {
+    impl $crate::pallet_balances::Config for $runtime {
         type RuntimeEvent = RuntimeEvent;
         type WeightInfo = ();
         type Balance = u128;
@@ -196,7 +140,7 @@ mod construct_runtime {
     }
 
     // ------------ Configure pallet timestamp -----------------------------------------------------
-    impl $crate::pallet_timestamp::Config for $name {
+    impl $crate::pallet_timestamp::Config for $runtime {
         type Moment = u64;
         type OnTimestampSet = ();
         type MinimumPeriod = ConstU64<1>;
@@ -212,15 +156,15 @@ mod construct_runtime {
     }
 
     type BalanceOf = <Balances as Currency<AccountId32>>::Balance;
-    impl Convert<Weight, BalanceOf> for $name {
+    impl Convert<Weight, BalanceOf> for $runtime {
         fn convert(w: Weight) -> BalanceOf {
             w.ref_time().into()
         }
     }
 
     parameter_types! {
-        pub SandboxSchedule: $crate::pallet_contracts::Schedule<$name> = {
-            <$crate::pallet_contracts::Schedule<$name>>::default()
+        pub SandboxSchedule: $crate::pallet_contracts::Schedule<$runtime> = {
+            <$crate::pallet_contracts::Schedule<$runtime>>::default()
         };
         pub DeletionWeightLimit: Weight = Weight::zero();
         pub DefaultDepositLimit: BalanceOf = 10_000_000;
@@ -228,7 +172,7 @@ mod construct_runtime {
         pub MaxDelegateDependencies: u32 = 32;
     }
 
-    impl $crate::pallet_contracts::Config for $name {
+    impl $crate::pallet_contracts::Config for $runtime {
         type Time = Timestamp;
         type Randomness = SandboxRandomness;
         type Currency = Balances;
@@ -261,20 +205,81 @@ mod construct_runtime {
 
     /// Default initial balance for the default account.
     pub const INITIAL_BALANCE: u128 = 1_000_000_000_000_000;
+    pub const DEFAULT_ACCOUNT: AccountId32 = AccountId32::new([1u8; 32]);
 
-    // implement the `drink::SandboxConfig` for the runtime type
-    $crate::impl_sandbox_config!($name, $name, INITIAL_BALANCE, AccountId32::new([1u8; 32]));
+    pub struct $sandbox {
+        ext: $crate::TestExternalities,
+    }
+
+    impl ::std::default::Default for $sandbox {
+        fn default() -> Self {
+            let ext = $crate::minimal::BlockBuilder::<$runtime>::new_ext(vec![(
+                DEFAULT_ACCOUNT,
+                INITIAL_BALANCE,
+            )]);
+            Self { ext }
+        }
+    }
+
+    impl $crate::Sandbox for $sandbox {
+        type Runtime = $runtime;
+
+        fn execute_with<T>(&mut self, execute: impl FnOnce() -> T) -> T {
+            self.ext.execute_with(execute)
+        }
+
+        fn dry_run<T>(&mut self, action: impl FnOnce(&mut Self) -> T) -> T {
+            // Make a backup of the backend.
+            let backend_backup = self.ext.as_backend();
+            // Run the action, potentially modifying storage. Ensure, that there are no pending changes
+            // that would affect the reverted backend.
+            let result = action(self);
+            self.ext.commit_all().expect("Failed to commit changes");
+
+            // Restore the backend.
+            self.ext.backend = backend_backup;
+            result
+        }
+
+        fn register_extension<E: ::core::any::Any + $crate::Extension>(&mut self, ext: E) {
+            self.ext.register_extension(ext);
+        }
+
+        fn initialize_block(
+            height: $crate::frame_system::pallet_prelude::BlockNumberFor<Self::Runtime>,
+            parent_hash: <Self::Runtime as $crate::frame_system::Config>::Hash,
+        ) {
+            $crate::minimal::BlockBuilder::<Self::Runtime>::initialize_block(height, parent_hash)
+        }
+
+        fn finalize_block(
+            height: $crate::frame_system::pallet_prelude::BlockNumberFor<Self::Runtime>,
+        ) -> <Self::Runtime as $crate::frame_system::Config>::Hash {
+            $crate::minimal::BlockBuilder::<Self::Runtime>::finalize_block(height)
+        }
+
+        fn default_actor() -> $crate::runtime::AccountIdFor<Self::Runtime> {
+            DEFAULT_ACCOUNT
+        }
+
+        fn get_metadata() -> $crate::runtime::RuntimeMetadataPrefixed {
+            Self::Runtime::metadata()
+        }
+
+        fn convert_account_to_origin(
+            account: $crate::runtime::AccountIdFor<Self::Runtime>,
+        ) -> <<Self::Runtime as $crate::frame_system::Config>::RuntimeCall as $crate::frame_support::sp_runtime::traits::Dispatchable>::RuntimeOrigin {
+            Some(account).into()
+        }
+    }
 }
-
-
-
 
 // ------------ Export runtime type itself, pallets and useful types from the auxiliary module -----
 pub use construct_runtime::{
-    $name, Balances, Contracts, PalletInfo, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+    $sandbox, $runtime, Balances, Contracts, PalletInfo, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
     RuntimeOrigin, System, Timestamp,
 };
     };
 }
 
-create_minimal_runtime!(MinimalRuntime);
+create_minimal_sandbox!(MinimalSandbox);

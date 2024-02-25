@@ -14,9 +14,11 @@ use crate::{runtime::AccountIdFor, EventRecordOf, Sandbox};
 type BalanceOf<R> =
     <<R as pallet_contracts::Config>::Currency as Inspect<AccountIdFor<R>>>::Balance;
 
-impl<Config: crate::SandboxConfig> Sandbox<Config>
+/// Contract API for the sandbox.
+pub trait ContractAPI<T>
 where
-    Config::Runtime: pallet_contracts::Config,
+    T: Sandbox,
+    T::Runtime: pallet_contracts::Config,
 {
     /// Interface for `bare_instantiate` contract call with a simultaneous upload.
     ///
@@ -30,34 +32,20 @@ where
     /// * `gas_limit` - The gas limit for the contract call.
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
-    pub fn deploy_contract(
-        &self,
+    fn deploy_contract(
+        &mut self,
         contract_bytes: Vec<u8>,
-        value: BalanceOf<Config::Runtime>,
+        value: BalanceOf<T::Runtime>,
         data: Vec<u8>,
         salt: Vec<u8>,
-        origin: AccountIdFor<Config::Runtime>,
+        origin: AccountIdFor<T::Runtime>,
         gas_limit: Weight,
-        storage_deposit_limit: Option<BalanceOf<Config::Runtime>>,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
     ) -> ContractInstantiateResult<
-        AccountIdFor<Config::Runtime>,
-        BalanceOf<Config::Runtime>,
-        EventRecordOf<Config::Runtime>,
-    > {
-        self.execute_with(|| {
-            pallet_contracts::Pallet::<Config::Runtime>::bare_instantiate(
-                origin,
-                value,
-                gas_limit,
-                storage_deposit_limit,
-                Code::Upload(contract_bytes),
-                data,
-                salt,
-                DebugInfo::UnsafeDebug,
-                CollectEvents::UnsafeCollect,
-            )
-        })
-    }
+        AccountIdFor<T::Runtime>,
+        BalanceOf<T::Runtime>,
+        EventRecordOf<T::Runtime>,
+    >;
 
     /// Interface for `bare_instantiate` contract call for a previously uploaded contract.
     ///
@@ -71,38 +59,20 @@ where
     /// * `gas_limit` - The gas limit for the contract call.
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
-    pub fn instantiate_contract(
-        &self,
+    fn instantiate_contract(
+        &mut self,
         code_hash: Vec<u8>,
-        value: BalanceOf<Config::Runtime>,
+        value: BalanceOf<T::Runtime>,
         data: Vec<u8>,
         salt: Vec<u8>,
-        origin: AccountIdFor<Config::Runtime>,
+        origin: AccountIdFor<T::Runtime>,
         gas_limit: Weight,
-        storage_deposit_limit: Option<BalanceOf<Config::Runtime>>,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
     ) -> ContractInstantiateResult<
-        AccountIdFor<Config::Runtime>,
-        BalanceOf<Config::Runtime>,
-        EventRecordOf<Config::Runtime>,
-    > {
-        let mut code_hash = &code_hash[..];
-        self.execute_with(|| {
-            pallet_contracts::Pallet::<Config::Runtime>::bare_instantiate(
-                origin,
-                value,
-                gas_limit,
-                storage_deposit_limit,
-                Code::Existing(
-                    <Config::Runtime as SysConfig>::Hash::decode(&mut code_hash)
-                        .expect("Invalid code hash"),
-                ),
-                data,
-                salt,
-                DebugInfo::UnsafeDebug,
-                CollectEvents::UnsafeCollect,
-            )
-        })
-    }
+        AccountIdFor<T::Runtime>,
+        BalanceOf<T::Runtime>,
+        EventRecordOf<T::Runtime>,
+    >;
 
     /// Interface for `bare_upload_code` contract call.
     ///
@@ -111,23 +81,13 @@ where
     /// * `contract_bytes` - The contract code.
     /// * `origin` - The sender of the contract call.
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
-    pub fn upload_contract(
-        &self,
+    fn upload_contract(
+        &mut self,
         contract_bytes: Vec<u8>,
-        origin: AccountIdFor<Config::Runtime>,
-        storage_deposit_limit: Option<BalanceOf<Config::Runtime>>,
+        origin: AccountIdFor<T::Runtime>,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
         determinism: Determinism,
-    ) -> CodeUploadResult<<Config::Runtime as frame_system::Config>::Hash, BalanceOf<Config::Runtime>>
-    {
-        self.execute_with(|| {
-            pallet_contracts::Pallet::<Config::Runtime>::bare_upload_code(
-                origin,
-                contract_bytes,
-                storage_deposit_limit,
-                determinism,
-            )
-        })
-    }
+    ) -> CodeUploadResult<<T::Runtime as frame_system::Config>::Hash, BalanceOf<T::Runtime>>;
 
     /// Interface for `bare_call` contract call.
     ///
@@ -139,19 +99,115 @@ where
     /// * `origin` - The sender of the contract call.
     /// * `gas_limit` - The gas limit for the contract call.
     /// * `storage_deposit_limit` - The storage deposit limit for the contract call.
-    #[allow(clippy::too_many_arguments)]
-    pub fn call_contract(
-        &self,
-        address: AccountIdFor<Config::Runtime>,
-        value: BalanceOf<Config::Runtime>,
+    #[allow(clippy::type_complexity, clippy::too_many_arguments)]
+    fn call_contract(
+        &mut self,
+        address: AccountIdFor<T::Runtime>,
+        value: BalanceOf<T::Runtime>,
         data: Vec<u8>,
-        origin: AccountIdFor<Config::Runtime>,
+        origin: AccountIdFor<T::Runtime>,
         gas_limit: Weight,
-        storage_deposit_limit: Option<BalanceOf<Config::Runtime>>,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
         determinism: Determinism,
-    ) -> ContractExecResult<BalanceOf<Config::Runtime>, EventRecordOf<Config::Runtime>> {
+    ) -> ContractExecResult<BalanceOf<T::Runtime>, EventRecordOf<T::Runtime>>;
+}
+
+impl<T> ContractAPI<T> for T
+where
+    T: Sandbox,
+    T::Runtime: pallet_contracts::Config,
+{
+    fn deploy_contract(
+        &mut self,
+        contract_bytes: Vec<u8>,
+        value: BalanceOf<T::Runtime>,
+        data: Vec<u8>,
+        salt: Vec<u8>,
+        origin: AccountIdFor<T::Runtime>,
+        gas_limit: Weight,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
+    ) -> ContractInstantiateResult<
+        AccountIdFor<T::Runtime>,
+        BalanceOf<T::Runtime>,
+        EventRecordOf<T::Runtime>,
+    > {
         self.execute_with(|| {
-            pallet_contracts::Pallet::<Config::Runtime>::bare_call(
+            pallet_contracts::Pallet::<T::Runtime>::bare_instantiate(
+                origin,
+                value,
+                gas_limit,
+                storage_deposit_limit,
+                Code::Upload(contract_bytes),
+                data,
+                salt,
+                DebugInfo::UnsafeDebug,
+                CollectEvents::UnsafeCollect,
+            )
+        })
+    }
+
+    fn instantiate_contract(
+        &mut self,
+        code_hash: Vec<u8>,
+        value: BalanceOf<T::Runtime>,
+        data: Vec<u8>,
+        salt: Vec<u8>,
+        origin: AccountIdFor<T::Runtime>,
+        gas_limit: Weight,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
+    ) -> ContractInstantiateResult<
+        AccountIdFor<T::Runtime>,
+        BalanceOf<T::Runtime>,
+        EventRecordOf<T::Runtime>,
+    > {
+        let mut code_hash = &code_hash[..];
+        self.execute_with(|| {
+            pallet_contracts::Pallet::<T::Runtime>::bare_instantiate(
+                origin,
+                value,
+                gas_limit,
+                storage_deposit_limit,
+                Code::Existing(
+                    <T::Runtime as SysConfig>::Hash::decode(&mut code_hash)
+                        .expect("Invalid code hash"),
+                ),
+                data,
+                salt,
+                DebugInfo::UnsafeDebug,
+                CollectEvents::UnsafeCollect,
+            )
+        })
+    }
+
+    fn upload_contract(
+        &mut self,
+        contract_bytes: Vec<u8>,
+        origin: AccountIdFor<T::Runtime>,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
+        determinism: Determinism,
+    ) -> CodeUploadResult<<T::Runtime as frame_system::Config>::Hash, BalanceOf<T::Runtime>> {
+        self.execute_with(|| {
+            pallet_contracts::Pallet::<T::Runtime>::bare_upload_code(
+                origin,
+                contract_bytes,
+                storage_deposit_limit,
+                determinism,
+            )
+        })
+    }
+
+    fn call_contract(
+        &mut self,
+        address: AccountIdFor<T::Runtime>,
+        value: BalanceOf<T::Runtime>,
+        data: Vec<u8>,
+        origin: AccountIdFor<T::Runtime>,
+        gas_limit: Weight,
+        storage_deposit_limit: Option<BalanceOf<T::Runtime>>,
+        determinism: Determinism,
+    ) -> ContractExecResult<BalanceOf<T::Runtime>, EventRecordOf<T::Runtime>> {
+        self.execute_with(|| {
+            pallet_contracts::Pallet::<T::Runtime>::bare_call(
                 origin,
                 address,
                 value,
@@ -182,7 +238,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        minimal::RuntimeEvent, sandbox::SandboxConfig, session::NO_SALT, MinimalRuntime,
+        minimal::{MinimalSandbox, MinimalSandboxRuntime, RuntimeEvent},
+        sandbox::prelude::*,
+        session::NO_SALT,
         DEFAULT_GAS_LIMIT,
     };
 
@@ -201,13 +259,13 @@ mod tests {
 
     #[test]
     fn can_upload_code() {
-        let sandbox = Sandbox::<MinimalRuntime>::default();
+        let mut sandbox = MinimalSandbox::default();
         let wasm_binary = compile_module("dummy");
-        let hash = <<MinimalRuntime as frame_system::Config>::Hashing>::hash(&wasm_binary);
+        let hash = <<MinimalSandboxRuntime as frame_system::Config>::Hashing>::hash(&wasm_binary);
 
         let result = sandbox.upload_contract(
             wasm_binary,
-            MinimalRuntime::default_actor(),
+            MinimalSandbox::default_actor(),
             None,
             Determinism::Enforced,
         );
@@ -218,7 +276,7 @@ mod tests {
 
     #[test]
     fn can_deploy_contract() {
-        let sandbox = Sandbox::<MinimalRuntime>::default();
+        let mut sandbox = MinimalSandbox::default();
         let wasm_binary = compile_module("dummy");
 
         let events_before = sandbox.events();
@@ -229,7 +287,7 @@ mod tests {
             0,
             vec![],
             NO_SALT,
-            MinimalRuntime::default_actor(),
+            MinimalSandbox::default_actor(),
             DEFAULT_GAS_LIMIT,
             None,
         );
@@ -241,21 +299,23 @@ mod tests {
         let instantiation_event = events[event_count - 2].clone();
         assert!(matches!(
             instantiation_event.event,
-            RuntimeEvent::Contracts(pallet_contracts::Event::<MinimalRuntime>::Instantiated { .. })
+            RuntimeEvent::Contracts(
+                pallet_contracts::Event::<MinimalSandboxRuntime>::Instantiated { .. }
+            )
         ));
         let deposit_event = events[event_count - 1].clone();
         assert!(matches!(
             deposit_event.event,
             RuntimeEvent::Contracts(
-                pallet_contracts::Event::<MinimalRuntime>::StorageDepositTransferredAndHeld { .. }
+                pallet_contracts::Event::<MinimalSandboxRuntime>::StorageDepositTransferredAndHeld { .. }
             )
         ));
     }
 
     #[test]
     fn can_call_contract() {
-        let sandbox = Sandbox::<MinimalRuntime>::default();
-        let actor = MinimalRuntime::default_actor();
+        let mut sandbox = MinimalSandbox::default();
+        let actor = MinimalSandbox::default_actor();
         let wasm_binary = compile_module("dummy");
 
         let result = sandbox.deploy_contract(
@@ -292,15 +352,17 @@ mod tests {
 
         assert_eq!(
             events[0].event,
-            RuntimeEvent::Contracts(pallet_contracts::Event::<MinimalRuntime>::ContractEmitted {
-                contract: contract_address.clone(),
-                data: vec![0, 0, 0, 0],
-            })
+            RuntimeEvent::Contracts(
+                pallet_contracts::Event::<MinimalSandboxRuntime>::ContractEmitted {
+                    contract: contract_address.clone(),
+                    data: vec![0, 0, 0, 0],
+                }
+            )
         );
 
         assert_eq!(
             events[1].event,
-            RuntimeEvent::Contracts(pallet_contracts::Event::<MinimalRuntime>::Called {
+            RuntimeEvent::Contracts(pallet_contracts::Event::<MinimalSandboxRuntime>::Called {
                 contract: contract_address,
                 caller: Origin::Signed(actor),
             }),

@@ -43,13 +43,13 @@ type SynResult<T> = Result<T, syn::Error>;
 /// `drink::runtime::SandboxConfig` trait. Thus, your testcase function should accept a single argument:
 /// `mut session: Session<_>`.
 ///
-/// By default, the macro will use `drink::runtime::MinimalRuntime`.
+/// By default, the macro will use `drink::runtime::MinimalSandbox`.
 ///
 /// # Example
 ///
 /// ```rust, ignore
 /// #[drink::test]
-/// fn testcase(mut session: Session<MinimalRuntime>) {
+/// fn testcase(mut session: Session<MinimalSandbox>) {
 ///     session
 ///         .deploy_bundle(&get_bundle(), "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)
 ///         .unwrap();
@@ -87,7 +87,7 @@ fn test_internal(attr: TokenStream2, item: TokenStream2) -> SynResult<TokenStrea
 
     let config = macro_args
         .config
-        .unwrap_or(syn::parse2(quote! { ::drink::runtime::MinimalRuntime })?);
+        .unwrap_or(syn::parse2(quote! { ::drink::runtime::MinimalSandbox })?);
 
     Ok(quote! {
         #[test]
@@ -131,7 +131,7 @@ fn test_internal(attr: TokenStream2, item: TokenStream2) -> SynResult<TokenStrea
 /// enum BundleProvider {}
 ///
 /// fn testcase() {
-///     Session::<MinimalRuntime>::default()
+///     Session::<MinimalSandbox>::default()
 ///         .deploy_bundle_and(BundleProvider::local()?, "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)
 ///         .deploy_bundle_and(BundleProvider::AnotherContract.bundle()?, "new", NO_ARGS, NO_SALT, NO_ENDOWMENT)
 ///         .unwrap();

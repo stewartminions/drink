@@ -1,7 +1,7 @@
 use std::{env, path::PathBuf};
 
 pub use contracts::{Contract, ContractIndex, ContractRegistry};
-use drink::{runtime::MinimalRuntime, session::Session, SandboxConfig, Weight, DEFAULT_GAS_LIMIT};
+use drink::{runtime::MinimalSandbox, session::Session, Sandbox, Weight, DEFAULT_GAS_LIMIT};
 use sp_core::crypto::AccountId32;
 pub use user_input::UserInput;
 
@@ -23,7 +23,7 @@ impl Default for ChainInfo {
     fn default() -> Self {
         Self {
             block_height: 0,
-            actor: MinimalRuntime::default_actor(),
+            actor: MinimalSandbox::default_actor(),
             gas_limit: DEFAULT_GAS_LIMIT,
         }
     }
@@ -69,7 +69,7 @@ impl Default for UiState {
 }
 
 pub struct AppState {
-    pub session: Session<MinimalRuntime>,
+    pub session: Session<MinimalSandbox>,
     pub chain_info: ChainInfo,
     pub ui_state: UiState,
     pub contracts: ContractRegistry,

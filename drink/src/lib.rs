@@ -32,7 +32,7 @@ pub use {
     sp_externalities::Extension, sp_io::TestExternalities,
 };
 
-pub use crate::runtime::minimal::{self, MinimalRuntime};
+pub use crate::runtime::minimal::{self, MinimalSandbox};
 use crate::{
     errors::MessageResult, mock::MockRegistry,
     runtime::pallet_contracts_debugging::InterceptingExtT,

@@ -4,7 +4,7 @@
 pub mod minimal;
 pub mod pallet_contracts_debugging;
 pub use frame_metadata::RuntimeMetadataPrefixed;
-pub use minimal::MinimalRuntime;
+pub use minimal::MinimalSandbox;
 
 /// The type of an account identifier.
 pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
