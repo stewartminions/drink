@@ -1,4 +1,4 @@
-//! Module containing the core trait use to customize the sandboxed runtime.
+//! Module containing the sandbox trait and its prelude.
 
 use core::any::Any;
 
