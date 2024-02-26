@@ -1,5 +1,4 @@
-//! Module containing the [`Runtime`](Runtime) trait and its example implementations. You can use
-//! `drink` with any runtime that implements the `Runtime` trait.
+//! Module containing a [`MinimalSandbox`] that implements the [`crate::Sandbox`] trait.
 
 pub mod minimal;
 pub mod pallet_contracts_debugging;
