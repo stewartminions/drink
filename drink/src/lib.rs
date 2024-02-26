@@ -26,7 +26,7 @@ pub use mock::{mock_message, ContractMock, MessageMock, MockedCallResult, Select
 use pallet_contracts::{debug::ExecResult, ExecReturnValue};
 use pallet_contracts_uapi::ReturnFlags;
 use parity_scale_codec::{Decode, Encode};
-/// Export crates that are used in the create_minimal_runtime macro.
+/// Export crates that are used in the create_minimal_sandbox macro.
 pub use {
     frame_support, frame_system, pallet_balances, pallet_contracts, pallet_timestamp, paste,
     sp_externalities::Extension, sp_io::TestExternalities,
